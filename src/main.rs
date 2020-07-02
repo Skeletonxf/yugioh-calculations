@@ -2,19 +2,11 @@ use rand::thread_rng;
 use rand::seq::SliceRandom;
 use std::collections::HashMap;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-enum Card {
-    UniZombie,
-    ShiranuiSolitaire,
-    Mezuki,
-    Gozuki,
-    NecroWorldBanshee,
-    GlowUpBloom,
-    ZombieWorld,
-    Other,
-}
+mod representation;
 
-fn generate_deck() -> Vec<Card> {
+use representation::{Card, GameState};
+
+fn generate_game() -> GameState {
     let mut deck = Vec::with_capacity(40);
     for _ in 0..3 {
         deck.push(Card::UniZombie);
@@ -33,7 +25,7 @@ fn generate_deck() -> Vec<Card> {
         deck.push(Card::Other);
     }
     deck.shuffle(&mut thread_rng());
-    deck
+    GameState::from(deck)
 }
 
 fn main() {
@@ -41,8 +33,8 @@ fn main() {
     let mut total_plays = HashMap::<PlayOptions, u64>::new();
     let runs = 10000;
     for _ in 0..runs {
-        let deck = generate_deck();
-        let plays = analyse(deck);
+        let game = generate_game();
+        let plays = analyse(game);
         for play in plays {
             let new_count = {
                 match total_plays.get(&play) {
@@ -58,84 +50,65 @@ fn main() {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-struct Deck {
-    deck: Vec<Card>,
-}
-
-impl Deck {
-    fn in_hand(&self, card: Card) -> bool {
-        self.deck[..5].contains(&card)
-    }
-
-    fn in_deck(&self, card: Card) -> bool {
-        self.deck[5..].contains(&card)
-    }
-
-    fn at_least_two_in_deck(&self, card: Card) -> bool {
-        self.deck[5..].iter().filter(|&c| c == &card).count() >= 2
-    }
-
-    fn in_hand_or_deck(&self, card: Card) -> bool {
-        self.deck.contains(&card)
-    }
-}
-
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 enum PlayOptions {
-    Syncro,
-    DoubleSyncro,
     DoomkingZombieWorld,
+    SummonUniZombie,
 }
 
 impl PlayOptions {
     fn all() -> Vec<PlayOptions> {
-        vec![PlayOptions::Syncro, PlayOptions::DoubleSyncro, PlayOptions::DoomkingZombieWorld]
+        vec![
+            PlayOptions::DoomkingZombieWorld,
+            PlayOptions::SummonUniZombie,
+        ]
     }
 }
 
-fn analyse(deck: Vec<Card>) -> Vec<PlayOptions> {
-    let deck = Deck { deck, };
+/**
+ * Attempts to summon soliaire from hand and special summon unizombie from deck
+ *
+ * This would fail if for example all the unizombies were already in the hand,
+ * in which case None is returned indicating faliure. On success the resultant
+ * game state is returned to test for further combos.
+ */
+fn solitaire_into_unizombie(game: GameState) -> Option<GameState> {
+    let game = game.summon_from_hand(Card::ShiranuiSolitaire)?;
+    let game = game.send_to_grave(Card::ShiranuiSolitaire)?;
+    game.summon_from_deck(Card::UniZombie)
+}
+
+/**
+ * Attempts to summon unizombie from the hand.
+ *
+ * This would obviously fail if unizombie wasn't in the hand.
+ */
+fn unizombie_from_hand(game: GameState) -> Option<GameState> {
+    game.summon_from_hand(Card::UniZombie)
+}
+
+fn can_summon_unizombie(game: GameState) -> Vec<GameState> {
+    let mut methods = vec![];
+
+    match unizombie_from_hand(game.clone()) {
+        Some(game) => methods.push(game),
+        None => (),
+    };
+    match solitaire_into_unizombie(game.clone()) {
+        Some(game) => methods.push(game),
+        None => (),
+    };
+
+    // gozuki/samurai skull into unizombie via monster reborn or discarding mezuki with jackaboolan
+
+    methods
+}
+
+fn analyse(game: GameState) -> Vec<PlayOptions> {
     let mut plays = Vec::new();
 
-    let solitaire_start = deck.in_hand(Card::ShiranuiSolitaire);
-    let unizombie_still_in_deck = deck.in_deck(Card::UniZombie);
-    let solitaire_into_unizombie = solitaire_start && unizombie_still_in_deck;
-
-    let mill_gozuki_to_summon_mezuki = solitaire_into_unizombie
-        && deck.in_deck(Card::Gozuki) && deck.in_hand(Card::Mezuki);
-    let discard_gozuki_to_summon_mezuki = solitaire_into_unizombie
-        && deck.in_hand(Card::Gozuki) && deck.in_hand(Card::Mezuki);
-    // first syncro from unizombie and mezuki for level 8 (or a link 2)
-    // then mezuki revives gozuki which gives a second mill to mill a second mezuki
-    // which revives uni zombie for a level 7 syncro (or a link 2)
-    let double_syncro = (mill_gozuki_to_summon_mezuki || discard_gozuki_to_summon_mezuki)
-        && deck.at_least_two_in_deck(Card::Mezuki);
-    if double_syncro {
-        plays.push(PlayOptions::DoubleSyncro);
+    if !can_summon_unizombie(game.clone()).is_empty() {
+        plays.push(PlayOptions::SummonUniZombie);
     }
-
-    // uni zombie mills or discards mezuki to revivse soliaire and syncro for level 8 (or a link 2)
-    let unizombie_revives_solitaire = solitaire_into_unizombie
-        && deck.in_hand(Card::Mezuki) && deck.in_deck(Card::Mezuki);
-    if unizombie_revives_solitaire {
-        plays.push(PlayOptions::Syncro);
-    }
-
-    let unizombie_start = deck.in_hand(Card::UniZombie);
-    let mezuki_banshee_mill = unizombie_start &&
-        ((deck.in_hand(Card::Mezuki) && deck.in_deck(Card::NecroWorldBanshee))
-        || (deck.in_deck(Card::Mezuki) && deck.in_hand(Card::NecroWorldBanshee)));
-    // mezuki revives banshee, link summon needlefiber, special summon glow up bloom
-    // activate banshee in grave, then summon something to send glow up bloom to grave
-    // to special summon doomking
-    let unizombie_into_doomking_zombie_world = mezuki_banshee_mill
-        && deck.in_hand_or_deck(Card::GlowUpBloom) && deck.in_hand_or_deck(Card::ZombieWorld);
-
-    // TODO: there are a lot of other ways to achieve this
-    if unizombie_into_doomking_zombie_world {
-        plays.push(PlayOptions::DoomkingZombieWorld)
-    }
-
     plays
 }
