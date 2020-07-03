@@ -1,6 +1,6 @@
-# Yu Gi Oh Calculator
+# Yu-Gi-Oh! Calculator
 
-This is a Rust Yu Gi Oh calculator that uses a very simplified game state simulator to calculate approximate probabilities of whatever you code it to.
+This is a Rust YuGiOh calculator that uses a very simplified game state simulator to calculate approximate probabilities of whatever you code it to.
 
 I'm using it for computing probabilities with Zombie decks, but the game state representation code can be used for more general purposes and is very flexible for exploring plays, as you can make extensive use of `Option`s `and_then` and `or_else` to attempt plays and branch on different cards. Rather than explictly code in edge cases like having 3 copies of a card in your hand and thus not being able to send it from your deck to grave, this rough simulation approach allows you to just try various steps and propagate the successes and failures without explicit edge case handling.
 
