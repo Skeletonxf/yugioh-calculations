@@ -15,8 +15,9 @@ fn generate_game() -> GameState {
         deck.push(Card::ZombieWorld);
     }
     for _ in 0..2 {
-        deck.push(Card::Gozuki);
         deck.push(Card::NecroWorldBanshee);
+        deck.push(Card::JackOBolan);
+        deck.push(Card::Gozuki);
     }
     for _ in 0..1 {
         deck.push(Card::GlowUpBloom);
@@ -73,9 +74,9 @@ impl PlayOptions {
  * game state is returned to test for further combos.
  */
 fn solitaire_into_unizombie(game: GameState) -> Option<GameState> {
-    let game = game.summon_from_hand(Card::ShiranuiSolitaire)?;
-    let game = game.send_to_grave(Card::ShiranuiSolitaire)?;
-    game.summon_from_deck(Card::UniZombie)
+    game.summon_from_hand(Card::ShiranuiSolitaire)
+        .and_then(|game| game.send_to_grave(Card::ShiranuiSolitaire))
+        .and_then(|game| game.summon_from_deck(Card::UniZombie))
 }
 
 /**
@@ -85,6 +86,27 @@ fn solitaire_into_unizombie(game: GameState) -> Option<GameState> {
  */
 fn unizombie_from_hand(game: GameState) -> Option<GameState> {
     game.summon_from_hand(Card::UniZombie)
+}
+
+/**
+ * Attempts to use Jack 'o Bolan's discard to summon effect to get unizombie
+ * out from the deck (ie not the hand).
+ */
+fn jackobolan_into_unizombie(game: GameState) -> Option<GameState> {
+    // actual card effect is discard for cost to summon but testing that
+    // the card is in hand first short circuits on the fail case faster
+    game.summon_from_hand(Card::JackOBolan)
+        // mezuki seems to be the only discard aside that can pull unizombie
+        // out of the deck ignoring the obvious unizombie/solitaire discards
+        .and_then(|game| game.discard(Card::Mezuki))
+        // summoned jackaboolan by discarding something,
+        // now normal summon something that can mill unizombie
+        .and_then(|game| game.clone().summon_from_hand(Card::SamuraiSkull)
+            .or_else(|| game.summon_from_hand(Card::Gozuki))
+        )
+        .and_then(|game| game.mill_to_grave(Card::UniZombie))
+        .and_then(|game| game.banish_from_grave(Card::Mezuki))
+        .and_then(|game| game.summon_from_grave(Card::UniZombie))
 }
 
 fn can_summon_unizombie(game: GameState) -> Vec<GameState> {
@@ -98,8 +120,10 @@ fn can_summon_unizombie(game: GameState) -> Vec<GameState> {
         Some(game) => methods.push(game),
         None => (),
     };
-
-    // gozuki/samurai skull into unizombie via monster reborn or discarding mezuki with jackaboolan
+    match jackobolan_into_unizombie(game.clone()) {
+        Some(game) => methods.push(game),
+        None => (),
+    };
 
     methods
 }
