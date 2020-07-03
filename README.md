@@ -24,4 +24,4 @@ Because the cards are representated as enums (and consequently just numbers) thi
 
 *****
 
-YDK format is quite common in YuGiOh deck editors as an import/export format and I don't think it would be very hard to add limited support for a small subset of YuGiOh cards. However, the exploration of different strategies requires manually coding in the steps to take with regards to each explicit card name, so I've not opted to implement any file parsing that could be used to analyse/compare multiple deck lists. This code can be repurposed as is by changing the strategies in `main.rs` and decklist defined `generate_game`.
+YDK format is quite common in YuGiOh deck editors as an import/export format and I don't think it would be very hard to add limited support for a small subset of YuGiOh cards. However, the exploration of different strategies requires manually coding in the steps to take with regards to each explicit card name, so I've not opted to implement any file parsing that could be used to analyse/compare multiple deck lists. This code can be repurposed as is by changing the strategies in `main.rs` and decklist defined in `generate_game`.
