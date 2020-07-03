@@ -21,6 +21,7 @@ pub enum Card {
     Other,
     Downbeat,
     CardDestruction,
+    UpstartGoblin,
     Link2,
 }
 
@@ -44,9 +45,9 @@ impl GameState {
         }
     }
 
-    // pub fn in_hand(&self, card: Card) -> bool {
-    //     self.hand.contains(&card)
-    // }
+    pub fn in_hand(&self, card: Card) -> bool {
+        self.hand.contains(&card)
+    }
 
     //
     // pub fn in_deck(&self, card: Card) -> bool {

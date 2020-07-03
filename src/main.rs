@@ -17,12 +17,12 @@ fn generate_game() -> GameState {
     }
     for _ in 0..2 {
         deck.push(Card::DoomkingBalerdroch);
-        deck.push(Card::SamuraiSkull);
         deck.push(Card::NecroWorldBanshee);
         deck.push(Card::Gozuki);
         deck.push(Card::GhostBelleAndHauntedMansion);
     }
     for _ in 0..1 {
+        deck.push(Card::SamuraiSkull);
         deck.push(Card::GoblinZombie);
         //deck.push(Card::ZombieMaster);
         deck.push(Card::JackOBolan);
@@ -30,6 +30,7 @@ fn generate_game() -> GameState {
         deck.push(Card::ShiranuiSpiritmaster);
         deck.push(Card::ShiranuiSpectralsword);
         deck.push(Card::CardDestruction);
+        //deck.push(Card::UpstartGoblin);
     }
     while deck.len() < 40 {
         deck.push(Card::Other);
@@ -39,7 +40,6 @@ fn generate_game() -> GameState {
 }
 
 fn main() {
-    println!("Hello, world!");
     let mut total_plays = HashMap::<PlayOptions, u64>::new();
     let runs = 50000;
     for _ in 0..runs {
@@ -62,14 +62,12 @@ fn main() {
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 enum PlayOptions {
-    DoomkingZombieWorld,
     SummonUniZombie,
 }
 
 impl PlayOptions {
     fn all() -> Vec<PlayOptions> {
         vec![
-            PlayOptions::DoomkingZombieWorld,
             PlayOptions::SummonUniZombie,
         ]
     }
@@ -257,8 +255,13 @@ fn can_summon_unizombie(game: GameState) -> Vec<GameState> {
     methods
 }
 
-fn analyse(game: GameState) -> Vec<PlayOptions> {
+fn analyse(mut game: GameState) -> Vec<PlayOptions> {
     let mut plays = Vec::new();
+
+    if game.in_hand(Card::UpstartGoblin) {
+        game = game.activate(Card::UpstartGoblin)
+            .and_then(|game| game.draw(1)).unwrap()
+    }
 
     if !can_summon_unizombie(game.clone()).is_empty() {
         plays.push(PlayOptions::SummonUniZombie);
