@@ -9,7 +9,10 @@ pub enum Card {
     ZombieWorld,
     JackOBolan,
     SamuraiSkull,
+    ZombieMaster,
+    GoblinZombie,
     Other,
+    Downbeat,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -84,6 +87,10 @@ impl GameState {
         self.hand.remove(self.hand.iter().position(|&c| c == card)?);
         self.grave.push(card);
         Some(self)
+    }
+
+    pub fn activate(self, card: Card) -> Option<GameState> {
+        self.discard(card)
     }
 
     // pub fn summon_from_extra_deck(mut self, card: Card) -> Option<GameState> {

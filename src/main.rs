@@ -13,13 +13,17 @@ fn generate_game() -> GameState {
         deck.push(Card::ShiranuiSolitaire);
         deck.push(Card::Mezuki);
         deck.push(Card::ZombieWorld);
+        deck.push(Card::Downbeat);
     }
     for _ in 0..2 {
         deck.push(Card::NecroWorldBanshee);
         deck.push(Card::JackOBolan);
         deck.push(Card::Gozuki);
+        deck.push(Card::SamuraiSkull);
+        deck.push(Card::GoblinZombie);
     }
     for _ in 0..1 {
+        deck.push(Card::ZombieMaster);
         deck.push(Card::GlowUpBloom);
     }
     while deck.len() < 40 {
@@ -109,6 +113,20 @@ fn jackobolan_into_unizombie(game: GameState) -> Option<GameState> {
         .and_then(|game| game.summon_from_grave(Card::UniZombie))
 }
 
+fn downbeat_into_unizombie(game: GameState) -> Option<GameState> {
+    game.clone().summon_from_hand(Card::SamuraiSkull)
+        .or_else(|| game.clone().summon_from_hand(Card::ZombieMaster))
+        .or_else(|| game.clone().summon_from_hand(Card::NecroWorldBanshee))
+        .or_else(|| game.summon_from_hand(Card::GoblinZombie))
+        .and_then(|game| game.activate(Card::Downbeat))
+        .and_then(|game| game.summon_from_deck(Card::UniZombie))
+        .and_then(|game| game.clone().send_to_grave(Card::SamuraiSkull)
+            .or_else(|| game.clone().send_to_grave(Card::ZombieMaster))
+            .or_else(|| game.clone().send_to_grave(Card::NecroWorldBanshee))
+            .or_else(|| game.send_to_grave(Card::GoblinZombie))
+        )
+}
+
 fn can_summon_unizombie(game: GameState) -> Vec<GameState> {
     let mut methods = vec![];
 
@@ -121,6 +139,10 @@ fn can_summon_unizombie(game: GameState) -> Vec<GameState> {
         None => (),
     };
     match jackobolan_into_unizombie(game.clone()) {
+        Some(game) => methods.push(game),
+        None => (),
+    };
+    match downbeat_into_unizombie(game.clone()) {
         Some(game) => methods.push(game),
         None => (),
     };
