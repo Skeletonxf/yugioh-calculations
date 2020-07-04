@@ -20,12 +20,12 @@ fn generate_game() -> GameState {
         deck.push(Card::NecroWorldBanshee);
         deck.push(Card::Gozuki);
         deck.push(Card::GhostBelleAndHauntedMansion);
+        deck.push(Card::SamuraiSkull);
+        deck.push(Card::JackOBolan);
     }
     for _ in 0..1 {
-        deck.push(Card::SamuraiSkull);
-        deck.push(Card::GoblinZombie);
+        //deck.push(Card::GoblinZombie);
         //deck.push(Card::ZombieMaster);
-        deck.push(Card::JackOBolan);
         deck.push(Card::GlowUpBloom);
         deck.push(Card::ShiranuiSpiritmaster);
         deck.push(Card::ShiranuiSpectralsword);
@@ -112,6 +112,30 @@ fn jackobolan_into_unizombie(game: GameState) -> Option<GameState> {
             .or_else(|| game.summon_from_hand(Card::Gozuki))
         )
         .and_then(|game| game.mill_to_grave(Card::UniZombie))
+        .and_then(|game| game.banish_from_grave(Card::Mezuki))
+        .and_then(|game| game.summon_from_grave(Card::UniZombie))
+}
+
+/**
+ * Attempts to use Jack 'o Bolan's discard to summon effect to get unizombie
+ * out from the deck via Needlefiber and a normal summoned tuner (ie not the hand).
+ */
+fn jackobolan_and_tuner_into_unizombie(game: GameState) -> Option<GameState> {
+    game.clone().summon_from_hand(Card::GlowUpBloom)
+        .or_else(|| game.clone().summon_from_hand(Card::ShiranuiSpectralsword))
+        .or_else(|| game.summon_from_hand(Card::GhostBelleAndHauntedMansion))
+        // mezuki seems to be the only discard that can revive unizombie
+        // from the grave
+        .and_then(|game| game.discard(Card::Mezuki))
+        .and_then(|game| game.summon_from_hand(Card::JackOBolan))
+        // summon Needlefiber
+        .and_then(|game| game.send_to_grave(Card::JackOBolan))
+        .and_then(|game| game.clone().send_to_grave(Card::GlowUpBloom)
+            .or_else(|| game.clone().send_to_grave(Card::ShiranuiSpectralsword))
+            .or_else(|| game.send_to_grave(Card::GhostBelleAndHauntedMansion))
+        )
+        .and_then(|game| game.summon_from_extra_deck(Card::Link2))
+        // revive unizombie with the discarded mezuki
         .and_then(|game| game.banish_from_grave(Card::Mezuki))
         .and_then(|game| game.summon_from_grave(Card::UniZombie))
 }
@@ -218,7 +242,8 @@ fn card_destruction_into_unizombie(game: GameState) -> Option<GameState> {
             .or_else(|| solitaire_into_unizombie(game.clone()))
             .or_else(|| jackobolan_into_unizombie(game.clone()))
             .or_else(|| downbeat_into_unizombie(game.clone()))
-            .or_else(|| jackobolan_and_downbeat_into_unizombie(game))
+            .or_else(|| jackobolan_and_downbeat_into_unizombie(game.clone()))
+            .or_else(|| jackobolan_and_tuner_into_unizombie(game))
         )
 }
 
@@ -242,6 +267,10 @@ fn can_summon_unizombie(game: GameState) -> Vec<GameState> {
         None => (),
     };
     match jackobolan_and_downbeat_into_unizombie(game.clone()) {
+        Some(game) => methods.push(game),
+        None => (),
+    };
+    match jackobolan_and_tuner_into_unizombie(game.clone()) {
         Some(game) => methods.push(game),
         None => (),
     };
