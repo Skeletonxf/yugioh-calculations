@@ -18,6 +18,7 @@ pub enum Card {
     GhostBelleAndHauntedMansion,
     ShiranuiSpectralsword,
     ShiranuiSpiritmaster,
+    TenyiSpiritAdhara,
     Other,
     Downbeat,
     CardDestruction,

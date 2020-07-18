@@ -14,6 +14,7 @@ fn generate_game() -> GameState {
         deck.push(Card::Mezuki);
         deck.push(Card::ZombieWorld);
         deck.push(Card::Downbeat);
+        deck.push(Card::TenyiSpiritAdhara);
     }
     for _ in 0..2 {
         deck.push(Card::DoomkingBalerdroch);
@@ -21,7 +22,7 @@ fn generate_game() -> GameState {
         deck.push(Card::Gozuki);
         deck.push(Card::GhostBelleAndHauntedMansion);
         deck.push(Card::SamuraiSkull);
-        deck.push(Card::JackOBolan);
+        //deck.push(Card::JackOBolan);
     }
     for _ in 0..1 {
         //deck.push(Card::GoblinZombie);
@@ -30,7 +31,7 @@ fn generate_game() -> GameState {
         deck.push(Card::ShiranuiSpiritmaster);
         deck.push(Card::ShiranuiSpectralsword);
         deck.push(Card::CardDestruction);
-        //deck.push(Card::UpstartGoblin);
+        deck.push(Card::UpstartGoblin);
     }
     while deck.len() < 40 {
         deck.push(Card::Other);
@@ -223,6 +224,37 @@ fn jackobolan_and_downbeat_into_unizombie(game: GameState) -> Option<GameState> 
 }
 
 /**
+ * Attempts to use Tenyi Spirit Adhara and a normal summon to bring out Needlefiber
+ * with a way to revive the Uni Zombie summoned off Needlefiber
+ */
+fn adhara_into_unizombie(game: GameState) -> Option<GameState> {
+    game.summon_from_hand(Card::TenyiSpiritAdhara)
+        .and_then(|game| game.clone().summon_from_hand(Card::Mezuki)
+            .or_else(|| game.clone().summon_from_hand(Card::Gozuki)
+                .and_then(|game| game.mill_to_grave(Card::Mezuki))
+            )
+            .or_else(|| game.summon_from_hand(Card::SamuraiSkull)
+                .and_then(|game| game.mill_to_grave(Card::Mezuki))
+            )
+        )
+        // summon needlefiber
+        .and_then(|game| game.send_to_grave(Card::TenyiSpiritAdhara))
+        .and_then(|game| game.clone().send_to_grave(Card::Mezuki)
+            .or_else(|| game.clone().send_to_grave(Card::Gozuki))
+            .or_else(|| game.send_to_grave(Card::SamuraiSkull))
+        )
+        .and_then(|game| game.summon_from_extra_deck(Card::Link2))
+        .and_then(|game| game.summon_from_deck(Card::UniZombie))
+        // it doesn't matter what method is used to get uni zombie
+        // into the grave, so assume another link 2 monster
+        .and_then(|game| game.send_to_grave(Card::Link2))
+        .and_then(|game| game.send_to_grave(Card::UniZombie))
+        .and_then(|game| game.summon_from_extra_deck(Card::Link2))
+        .and_then(|game| game.banish_from_grave(Card::Mezuki))
+        .and_then(|game| game.summon_from_grave(Card::UniZombie))
+}
+
+/**
  * Attempts to use card destruction to refresh the hand and summon unizombie
  */
 fn card_destruction_into_unizombie(game: GameState) -> Option<GameState> {
@@ -243,7 +275,8 @@ fn card_destruction_into_unizombie(game: GameState) -> Option<GameState> {
             .or_else(|| jackobolan_into_unizombie(game.clone()))
             .or_else(|| downbeat_into_unizombie(game.clone()))
             .or_else(|| jackobolan_and_downbeat_into_unizombie(game.clone()))
-            .or_else(|| jackobolan_and_tuner_into_unizombie(game))
+            .or_else(|| jackobolan_and_tuner_into_unizombie(game.clone()))
+            .or_else(|| adhara_into_unizombie(game))
         )
 }
 
@@ -271,6 +304,10 @@ fn can_summon_unizombie(game: GameState) -> Vec<GameState> {
         None => (),
     };
     match jackobolan_and_tuner_into_unizombie(game.clone()) {
+        Some(game) => methods.push(game),
+        None => (),
+    };
+    match adhara_into_unizombie(game.clone()) {
         Some(game) => methods.push(game),
         None => (),
     };
